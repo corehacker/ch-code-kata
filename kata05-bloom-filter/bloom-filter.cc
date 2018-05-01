@@ -97,16 +97,17 @@ public:
 };
 
 void gen_random(char *s, const int len) {
-    static const char alphanum[] =
-        "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
+  memset(s, 0x00, len);
+  static const char alphanum[] =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "abcdefghijklmnopqrstuvwxyz";
 
-    for (int i = 0; i < len; ++i) {
-        s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
-    }
+  int n = ((rand() % (len - 1)) + 1);
+  for (int i = 0; i < n; ++i) {
+    s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
+  }
 
-    s[len] = 0;
+  s[len] = 0;
 }
 
 int main() {
