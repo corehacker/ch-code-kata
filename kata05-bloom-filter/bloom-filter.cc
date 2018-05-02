@@ -47,7 +47,7 @@ public:
     size_t h = range(hash<string>{}(key));
     size_t byte = getByte(h);
     size_t bit = getBit(h);
-    mBitmap[byte] |= (1 << bit);
+    mBitmap[byte] |= (0x1 << bit);
     // cout << "hash(" << quoted(key) << ") = " << h << ", byte: " << byte << ", Bit: " << bit << '\n';
   }
 
@@ -57,7 +57,15 @@ public:
     size_t bit = getBit(h);
     uint8_t entry = mBitmap[byte];
     // cout << "hash(" << quoted(key) << ") = " << h << ", byte: " << byte << ", Bit: " << bit << '\n';
-    return (1 & (entry >> bit) == 0x1) ? true : false;
+    return ((entry >> bit) & 0x1) ? true : false;
+  }
+
+  void printBitmap() {
+    for(int i = 0; i < mBitmap.size(); i++) {
+      // cout << std::hex << mBitmap[i] << ", ";
+      printf("0x%X, ", mBitmap[i]);
+    }
+    cout << endl;
   }
 };
 
@@ -75,14 +83,18 @@ public:
     delete mBloomFilter;
   }
 
+  void add(string &word) {
+    mBloomFilter->add(word);
+    mWordMap[word] = true;
+  }
+
   void build() {
     string word;
     string file = WORDS_FILE;
     ifstream wd(file);
     while(getline(wd, word)) {
       if(word.length()) {
-        mBloomFilter->add(word);
-        mWordMap[word] = true;
+        add(word);
       }
     }
   }
@@ -93,6 +105,10 @@ public:
 
   bool inMap(string &word) {
     return mWordMap[word];
+  }
+
+  void print() {
+    mBloomFilter->printBitmap();
   }
 };
 
@@ -111,25 +127,37 @@ void gen_random(char *s, const int len) {
 }
 
 int main() {
-  // BloomFilter bf(32);
-  // string str = "études";
+  // WordCache wc(32);
+  // // string str = "études";
+  // string str = "p";
+  // string str1 = "P";
   // // string str = "yours";
-  // // bf.add(str);
-  // bool has = bf.has(str);
-  // cout << "Exists? " << has << endl;
+  // wc.add(str);
+  // bool has = wc.has(str1);
+  // bool has1 = wc.inMap(str1);
+  // cout << "Exists? " << has << ", " << has1 << endl;
 
-  WordCache cache(32);
+  double n = (double) INT32_MAX;
+
+  WordCache cache(1024 * 1024);
   cache.build();
+  // cache.print();
 
   char s[12];
-  int count = 1000;
+  int count = n;
+  int falsePositives = 0;
+  int falseNegatives = 0;
   while(count--) {
     gen_random(s, 11);
     string str = s;
     bool present = cache.has(str);
     bool present1 = cache.inMap(str);
-    cout << "String: " << str << " present? " << present << ", " << present1 << endl;
+    // cout << "String: " << str << " present? " << present << ", " << present1 << endl;
+    if(present && !present1) falsePositives++;
+    if(!present && present1) falseNegatives++;
   }
+
+  cout << "False +ves: " << (double) ((double) falsePositives / n) << "%, False -ves: " << (double) ((double) falseNegatives / n) << "%" << endl;
 
   return 0;
 }
