@@ -158,6 +158,14 @@ private:
     return root;
   }
 
+  TreeNode *find(TreeNode *root, int val) {
+    if(!root) return nullptr;
+    if(root->val == val) return root;
+    TreeNode *left = find(root->left, val);
+    if(left) return left;
+    return find(root->right, val);
+  }
+
 public:
   TreeNode(int val) : val(val), left(nullptr), right(nullptr), parent(nullptr) {}
 
@@ -178,5 +186,9 @@ public:
   void postorder() {
     postorder(this);
     cout << endl;
+  }
+
+  TreeNode *find(int val) {
+    return find(this, val);
   }
 };
