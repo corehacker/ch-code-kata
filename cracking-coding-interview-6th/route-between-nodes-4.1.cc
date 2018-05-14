@@ -8,7 +8,7 @@
 
 using namespace std;
 
-bool hasRoute(Graph *G, Node *src, Node *dst) {
+bool hasRoute(Graph *G, GraphNode *src, GraphNode *dst) {
   if(!G || !src || !dst) return false;
   if(src == dst) return true;
 
