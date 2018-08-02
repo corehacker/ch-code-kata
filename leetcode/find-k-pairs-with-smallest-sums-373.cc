@@ -217,22 +217,44 @@ public:
         for(int i = 0; i < nums1.size(); i++) {
           for(int j = 0; j < nums2.size(); j++) {
             int sum = nums1[i] + nums2[j];
-            vector<int> indices;
-            indices.push_back(i);
-            indices.push_back(j);
-            if(map.find(sum) == map.end()) {
-              h.add(sum);
+
+            h.add(sum);
+            // vector<int> indices;
+            // indices.push_back(i);
+            // indices.push_back(j);
+            
+            if(map.find(sum) != map.end()) {
+              // h.add(sum);
+              // map.insert(make_pair(sum, vector<vector<int>>(1, indices)));
+            } else {
+              // map[sum].push_back(vector<int>());
             }
-            map[sum].push_back(indices);
+            
           }
         }
 
-        while(k--) {
-          
-        }
+        vector<pair<int, int>> kPairs;
+        // while(k) {
+        //   int nextSmallest = h.poll();
+        //   vector<vector<int>> smallestPairs = map[nextSmallest];
+        //   for(auto p : smallestPairs) {
+        //     kPairs.push_back(make_pair(p[0], p[1]));
+        //     k--;
+        //     if(!k) break;
+        //   }
+        // }
+        return kPairs;
     }
 };
 
 int main() {
+  vector<int> nums1 = {1,7,11}, nums2 = {2,4,6};
+  int k = 3;
+  Solution s;
 
+  vector<pair<int, int>> kPairs = s.kSmallestPairs(nums1, nums2, k);
+  for(auto p : kPairs) {
+    cout << "[" << p.first << "," << p.second << "]" << endl;
+  }
+  return 0;
 }
