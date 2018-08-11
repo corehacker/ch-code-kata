@@ -16,28 +16,24 @@ using namespace std;
 
 class Solution {
 private:
-  void processAtom(string &atom, string &atomCount, vector<string> &stack) {
+  void processAtom(string &atom, string &atomCount, vector<pair<string, int>> &stack) {
     if(!atom.length()) return;
     int count = 1;
     if(atomCount.length()) count = stoi(atomCount);
-    while(count--) {
-      stack.push_back(atom);
-    }
+    stack.push_back(make_pair(atom, count));
     atom = "";
     atomCount = "";
   }
 
-  void processMultiplier(vector<string> &stack, string &multiplier) {
+  void processMultiplier(vector<pair<string, int>> &stack, string &multiplier) {
     int m = multiplier.length() ? stoi(multiplier) : 1;
-    vector<string> stage;
+    vector<pair<string, int>> stage;
     while(true) {
-      string atom = stack.back();
+      pair<string, int> atom = stack.back();
       stack.pop_back();
-      if(atom == "(") break;
-      int M = m;
-      while(M--) {
-        stage.push_back(atom);
-      }
+      if(atom.first == "(") break;
+      atom.second *= m;
+      stage.push_back(atom);
     }
     for(int i = stage.size() - 1; i >= 0; i--) {
       stack.push_back(stage[i]);
@@ -45,7 +41,7 @@ private:
     multiplier = "";
   }
 
-  void process(string &atom, string &atomCount, vector<string> &stack, string &multiplier, bool &mult) {
+  void process(string &atom, string &atomCount, vector<pair<string, int>> &stack, string &multiplier, bool &mult) {
     if(mult) {
       processMultiplier(stack, multiplier);
       mult = false;
@@ -53,10 +49,10 @@ private:
     processAtom(atom, atomCount, stack);
   }
 
-  void printStack(vector<string> &stack) {
+  void printStack(vector<pair<string, int>> &stack) {
     cout << "Stack: ";
     for(auto s: stack) {
-      cout << s << ", ";
+      cout << s.first << ", ";
     }
     cout << endl << endl;
   }
@@ -64,7 +60,7 @@ public:
   string countOfAtoms(string formula) {
     string atom, atomCount, multiplier;
     bool mult = false;
-    vector<string> stack;
+    vector<pair<string, int>> stack;
 
     for(auto c : formula) {
       if(c >= 'A' && c <= 'Z') {
@@ -80,7 +76,7 @@ public:
         }
       } else if(c == '(') {
         process(atom, atomCount, stack, multiplier, mult);
-        stack.push_back("(");
+        stack.push_back(make_pair("(", 0));
       } else {
         process(atom, atomCount, stack, multiplier, mult);
         mult = true;
@@ -90,10 +86,10 @@ public:
 
     map<string, int> atoms;
     for(auto a : stack) {
-      if(atoms.find(a) == atoms.end()) {
-        atoms[a] = 1;
+      if(atoms.find(a.first) == atoms.end()) {
+        atoms[a.first] = a.second;
       } else {
-        atoms[a]++;
+        atoms[a.first] += a.second;
       }
     }
 
