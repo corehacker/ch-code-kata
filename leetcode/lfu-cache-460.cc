@@ -15,106 +15,51 @@
 
 using namespace std;
 
-uint64_t getEpochNano() {
-	auto epoch = std::chrono::system_clock::now().time_since_epoch();
-	return std::chrono::duration_cast<std::chrono::nanoseconds>(epoch).count();
+unsigned long gTime = 0;
+
+unsigned long getEpochNano() {
+	// auto epoch = std::chrono::system_clock::now().time_since_epoch();
+	// return std::chrono::duration_cast<std::chrono::nanoseconds>(epoch).count();
+  return gTime++;
 }
+
+template <typename T, typename Container, typename Comparator>
+class my_priority_queue : public priority_queue<T, Container, Comparator> {
+public:
+  bool remove(const T &value) {
+    auto it = std::find(this->c.begin(), this->c.end(), value);
+    if (it != this->c.end()) {
+      this->c.erase(it);
+      make_heap(this->c.begin(), this->c.end(), this->comp);
+      return true;
+    } else {
+      return false;
+    }
+  }
+};
 
 struct Node{
     int key;
     int value;
     int frequency;
     long timestamp;
-    Node *next;
-    Node *prev;
     Node(int k, int v, int f, long t) : 
-      key(k), value(v), frequency(f), timestamp(t), next(nullptr), prev(nullptr) {}
-    void reset() {
-        next = nullptr;
-        prev = nullptr;
-    }
-};
-
-class LRUList {
-private:
-    Node *head;
-    Node *tail;
-
-public:
-    LRUList() : head(nullptr), tail(nullptr) {}
-
-    void push_back(Node *node) {
-        if(!head && !tail) {
-            head = node;
-            tail = node;
-        } else {
-            tail->next = node;
-            node->prev = tail;
-            tail = node;
-        }
-    }
-
-    Node *pop_front() {
-        if(!head && !tail) {
-            return nullptr;
-        } else {
-            Node *ret = head;
-            head = head->next;
-            if(head) head->prev = nullptr;
-            if(!head) tail = nullptr;
-            return ret;
-        }
-    }
-
-    void remove(Node *node) {
-        if(!node) return;
-        if(node == head && node == tail) {
-            head = nullptr;
-            tail = nullptr;
-        } else if (node == head) {
-            head = head->next;
-            head->prev = nullptr;
-        } else if (node == tail) {
-            tail = tail->prev;
-            tail->next = nullptr;
-        } else {
-            node->next->prev = node->prev;
-            node->prev->next = node->next;
-        }
-    }
-
-    void print() {
-        Node *curr = head;
-        if(!head && !tail) cout << "[EMPTY]";
-        if(head) cout << "[" << head->key << ", " << head->value << "] ";
-        while(curr) {
-            cout << "(" << curr->key << ", " << curr->value << "), ";
-            curr = curr->next;
-        }
-        if(tail) cout << "[" << tail->key << ", " << tail->value << "] ";
-        cout << endl;
-    }
+      key(k), value(v), frequency(f), timestamp(t) {}
 };
 
 class NodeCompareFrequency {
 public:
   bool operator() (const Node *lhs, const Node *rhs) const {
-    return lhs->frequency < rhs->frequency;
-  }
-};
-
-class NodeCompareTimestamp {
-public:
-  bool operator() (const Node *lhs, const Node *rhs) const {
-    return lhs->timestamp < rhs->timestamp;
+    if(lhs->frequency > rhs->frequency) return true;
+    if(lhs->frequency == rhs->frequency && lhs->timestamp > rhs->timestamp) return true;
+    return false;
   }
 };
 
 class LFUCache {
 private:
   unordered_map<int, Node *> map;
-  priority_queue<Node *, vector<Node *>, NodeCompareFrequency> q;
-  LRUList list;
+  my_priority_queue<Node *, vector<Node *>, NodeCompareFrequency> q;
   size_t capacity;
 
   bool full() {
@@ -122,74 +67,89 @@ private:
   }
 
   Node *getEvictionNode() {
-    priority_queue<Node *, vector<Node *>, NodeCompareTimestamp> tsQ;
-    Node *temp = q.top();
+    Node *evict = q.top();
     q.pop();
-
-    tsQ.push(temp);
-
-    while(true) {
-      Node *t = q.top();
-      if(t->frequency == temp->frequency) {
-        q.pop();
-        tsQ.push(t);
-      } else {
-        break;
-      }
-    }
-
-    Node *evict = tsQ.top();
-    tsQ.pop();
-
-    while(tsQ.size()) {
-      Node *temp = tsQ.top();
-      tsQ.pop();
-      q.push(temp);
-    }
-
     return evict;
   }
 
   void evict() {
     Node *e = getEvictionNode();
+    cout << "Evicting - key: " << e->key << ", value: " << e->value << 
+      ", frequency: " << e->frequency << ", timestamp: " << e->timestamp << endl;
     map.erase(e->key);
-    list.remove(e);
     delete e;
+  }
+
+  void replace(int key, int value) {
+    Node *node = map[key];
+    q.remove(node);
+
+    node->value = value;
+    node->frequency++;
+    node->timestamp = getEpochNano();
+
+    q.push(node);
   }
 
 public:
   LFUCache(int capacity) {
     this->capacity = (size_t) capacity;
   }
+
+  void print() {
+    cout << "***************Cache: " << endl;
+    for(auto it: map) {
+      cout << "  " << it.first << endl;
+      cout << "    value    : " << it.second->value << endl;
+      cout << "    timestamp: " << it.second->timestamp << endl;
+      cout << "    frequency: " << it.second->frequency << endl;
+      cout << endl;
+    }
+    cout << "*********************" << endl;
+  }
   
   int get(int key) {
     if(map.find(key) == map.end()) return -1;
     Node *node = map[key];
-    list.remove(node);
-    node->reset();
+    q.remove(node);
 
     node->frequency++;
     node->timestamp = getEpochNano();
 
-    list.push_back(node);
     q.push(node);
     return node->value;
   }
   
   void put(int key, int value) {
-    Node *node = nullptr;
     if(map.find(key) == map.end()) {
       if(full()) {
         evict();
       }
+      Node *node = new Node(key, value, 1, getEpochNano());
+      map.insert(make_pair(key, node));
+      q.push(node);
+    } else {
+      replace(key, value);
     }
-    node = new Node(key, value, 1, getEpochNano());
-    list.push_back(node);
-    map.insert(make_pair(key, node));
-    q.push(node);
   }
 };
 
 int main() {
+  LFUCache cache(2);
+  cache.put(1, 1);
+  cache.put(2, 2);
+  cache.print();
+  cout << "Get 1: " << cache.get(1) << endl;
+  cache.print();
+  cache.put(3,3);
+  cache.print();
+  cout << "Get 2: " << cache.get(2) << endl;
+  cout << "Get 3: " << cache.get(3) << endl;
+  cache.print();
+  cache.put(4,4);
+  cache.print();
+  cout << "Get 1: " << cache.get(1) << endl;
+  cout << "Get 3: " << cache.get(3) << endl;
+  cout << "Get 4: " << cache.get(4) << endl;
   return 0;
 }
